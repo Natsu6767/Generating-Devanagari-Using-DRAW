@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.utils as vutils
+import numpy as np
 
 class DRAWModel(nn.Module):
     def __init__(self, params):
@@ -14,6 +15,7 @@ class DRAWModel(nn.Module):
         self.N = params['N']
         self.enc_size = params['enc_size']
         self.dec_size = params['dec_size']
+        self.device = params['device']
 
         self.cs = [0] * self.T
         
@@ -33,14 +35,14 @@ class DRAWModel(nn.Module):
     def forward(self, x):
         self.batch_size = x.size(0)
 
-        h_enc_prev = torch.zeros(self.batch_size, self.enc_size, require_grads=True)
-        h_dec_prev = torch.zeros(self.batch_size, self.dec_size, require_grads=True)
+        h_enc_prev = torch.zeros(self.batch_size, self.enc_size, requires_grad=True, device=self.device)
+        h_dec_prev = torch.zeros(self.batch_size, self.dec_size, requires_grad=True, device=self.device)
 
-        enc_state = torch.zeros(self.batch_size, self.enc_size, require_grads=True)
-        dec_state = torch.zeros(self.batch_size, self.dec_size, require_grads=True)
+        enc_state = torch.zeros(self.batch_size, self.enc_size, requires_grad=True, device=self.device)
+        dec_state = torch.zeros(self.batch_size, self.dec_size, requires_grad=True, device=self.device)
 
-        for t in range(T):
-            c_prev = torch.zeros(self.batch_size, self.B*self.A, require_grads=True) if t == 0 else self.cs[t-1]
+        for t in range(self.T):
+            c_prev = torch.zeros(self.batch_size, self.B*self.A, requires_grad=True, device=self.device) if t == 0 else self.cs[t-1]
             x_hat = x - F.sigmoid(c_prev)
 
             r_t = self.read(x, x_hat, h_dec_prev)
@@ -62,10 +64,10 @@ class DRAWModel(nn.Module):
 
     def write(self, h_dec):
         # No attention
-        return self.write(h_dec)
+        return self.fc_write(h_dec)
 
     def sampleQ(self, h_enc):
-        e = torch.randn(self.batch_size, self.z_size)
+        e = torch.randn(self.batch_size, self.z_size, device=self.device)
 
         mu = self.fc_mu(h_enc)
         log_sigma = self.fc_sigma(h_enc)
@@ -80,7 +82,8 @@ class DRAWModel(nn.Module):
 
         criterion = nn.BCELoss()
         x_recon = F.sigmoid(self.cs[-1])
-        Lx = criterion(x_recon, x)
+        # Only want to average across the mini-batch, hence, multiply by the image dimensions.
+        Lx = criterion(x_recon, x) * self.A * self.B
 
         Lz = 0
 
@@ -98,18 +101,20 @@ class DRAWModel(nn.Module):
         return net_loss
 
     def generate(self, num_output):
-        h_dec_prev = torch.zeros(self.batch_size, self.dec_size)
-        dec_state = torch.zeros(self.batch_size, self.dec_size)
+        h_dec_prev = torch.zeros(num_output, self.dec_size, device=self.device)
+        dec_state = torch.zeros(num_output, self.dec_size  , device=self.device)
 
         for t in range(self.T):
-            c_prev = torch.zeros(self.batch_size, self.B*self.A) if t == 0 else self.cs[t-1]
-            z = torch.randn(self.batch_size, self.z_size)
-            h_dec, dec_state = torch.decoder(z, (h_dec_prev, dec_state))
+            c_prev = torch.zeros(num_output, self.B*self.A, device=self.device) if t == 0 else self.cs[t-1]
+            z = torch.randn(num_output, self.z_size, device=self.device)
+            h_dec, dec_state = self.decoder(z, (h_dec_prev, dec_state))
             self.cs[t] = c_prev + self.write(h_dec)
             h_dec_prev = h_dec
 
         imgs = []
+
         for img in self.cs:
-            imgs.append(vutils.make_grid(img, nrow=int(np.sqrt(int(num_output))), padding=2, normalize=True))
+            img = img.view(-1, 1, self.B, self.A)
+            imgs.append(vutils.make_grid(F.sigmoid(img).detach().cpu(), nrow=int(np.sqrt(int(num_output))), padding=2, normalize=True))
 
         return imgs
