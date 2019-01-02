@@ -80,8 +80,19 @@ class DRAWModel(nn.Module):
         #return torch.cat((x, x_hat), dim=1)
 
     def write(self, h_dec):
+        # Using attention
+        w = self.fc_write(h_dec)
+        w = w.view(self.batch_size, self.N, self.N)
+
+        Fx, Fy, gamma = self.attn_window(h_dec)
+        Fyt = Fy.transpose(2, 1)
+
+        wr = Fyt.bmm(w.bmm(Fx))
+        wr = wr.view(self.batch_size, self.B*self.A)
+
+        return wr / gamma.view(-1, 1).expand_as(wr)
         # No attention
-        return self.fc_write(h_dec)
+        #return self.fc_write(h_dec)
 
     def sampleQ(self, h_enc):
         e = torch.randn(self.batch_size, self.z_size, device=self.device)
