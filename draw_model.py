@@ -32,6 +32,8 @@ class DRAWModel(nn.Module):
 
         self.fc_write = nn.Linear(self.dec_size, self.N*self.N)
 
+        self.fc_attention = nn.Linear(self.dec_size, 5)
+
     def forward(self, x):
         self.batch_size = x.size(0)
 
@@ -76,6 +78,39 @@ class DRAWModel(nn.Module):
         z = mu + e * sigma
 
         return z, mu, log_sigma, sigma
+
+    def attn_window(self, h_dec):
+        params = self.fc_attention(h_dec)
+        gx_, gy_, log_sigma_2, log_delta_, log_gamma = params.split(1, 1)
+
+        gx = (self.A + 1) / 2 * (gx_ + 1)
+        gy = (self.B + 1) / 2 * (gy_ + 1)
+        delta = (max(self.A, self.B) - 1) / (self.N - 1) * torch.exp(log_delta_)
+        sigma_2 = torch.exp(log_sigma_2)
+        gamma = torch.exp(log_gamma)
+
+        return self.filterbank(gx, gy, sigma_2, delta), gamma
+
+    def filterbank(self, gx, gy, sigma_2, delta, epsilon=1e-8):
+        grid_i = torch.arange(0, self.N, device=self.device).view(1, -1)
+        
+        mu_x = gx + (grid_i - self.N / 2 - 0.5) * delta
+        mu_y = gy + (grid_i - self.N / 2 - 0.5) * delta
+
+        a = tf.arange(0, self.A, device=self.device).view(1, 1, -1)
+        b = tf.arange(0, self.B, device=self.device).view(1, 1, -1)
+
+        mu_x = mu_x.view(-1, self.N, 1)
+        mu_y = mu_y.view(-1, self.N, 1)
+        sigma_2 = sigma_2.view(-1, 1, 1)
+
+        Fx = torch.exp(-torch.pow(a - mu_x, 2) / (2 * sigma_2))
+        Fy = torch.exp(-torch.pow(b - mu_y, 2) / (2 * sigma_2))
+
+        Fx = Fx / (Fx.sum(2, True).expand_as(Fx) + epsilon)
+        Fy = Fy / (Fy.sum(2, True).expand_as(Fy) + epsilon)
+
+        return Fx, Fy
 
     def loss(self, x):
         self.forward(x)
