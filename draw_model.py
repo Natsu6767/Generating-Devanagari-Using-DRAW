@@ -45,7 +45,7 @@ class DRAWModel(nn.Module):
 
         for t in range(self.T):
             c_prev = torch.zeros(self.batch_size, self.B*self.A, requires_grad=True, device=self.device) if t == 0 else self.cs[t-1]
-            x_hat = x - F.sigmoid(c_prev)
+            x_hat = x - torch.sigmoid(c_prev)
 
             r_t = self.read(x, x_hat, h_dec_prev)
 
@@ -62,11 +62,11 @@ class DRAWModel(nn.Module):
 
     def read(self, x, x_hat, h_dec_prev):
         # Using attention
-        Fx, Fy, gamma = self.attn_window(h_dec)
+        (Fx, Fy), gamma = self.attn_window(h_dec_prev)
 
         def filter_img(img, Fx, Fy, gamma):
             Fxt = Fx.transpose(2, 1)
-            img = img.vie(-1, self.B, self.A)
+            img = img.view(-1, self.B, self.A)
             glimpse = Fy.bmm(img.bmm(Fxt))
             glimpse = glimpse.view(-1, self.N*self.N)
 
@@ -84,7 +84,7 @@ class DRAWModel(nn.Module):
         w = self.fc_write(h_dec)
         w = w.view(self.batch_size, self.N, self.N)
 
-        Fx, Fy, gamma = self.attn_window(h_dec)
+        (Fx, Fy), gamma = self.attn_window(h_dec)
         Fyt = Fy.transpose(2, 1)
 
         wr = Fyt.bmm(w.bmm(Fx))
@@ -118,13 +118,13 @@ class DRAWModel(nn.Module):
         return self.filterbank(gx, gy, sigma_2, delta), gamma
 
     def filterbank(self, gx, gy, sigma_2, delta, epsilon=1e-8):
-        grid_i = torch.arange(0, self.N, device=self.device).view(1, -1)
+        grid_i = torch.arange(start=0.0, end=self.N, device=self.device, requires_grad=True,).view(1, -1)
         
         mu_x = gx + (grid_i - self.N / 2 - 0.5) * delta
         mu_y = gy + (grid_i - self.N / 2 - 0.5) * delta
 
-        a = tf.arange(0, self.A, device=self.device).view(1, 1, -1)
-        b = tf.arange(0, self.B, device=self.device).view(1, 1, -1)
+        a = torch.arange(0.0, self.A, device=self.device, requires_grad=True).view(1, 1, -1)
+        b = torch.arange(0.0, self.B, device=self.device, requires_grad=True).view(1, 1, -1)
 
         mu_x = mu_x.view(-1, self.N, 1)
         mu_y = mu_y.view(-1, self.N, 1)
@@ -142,7 +142,7 @@ class DRAWModel(nn.Module):
         self.forward(x)
 
         criterion = nn.BCELoss()
-        x_recon = F.sigmoid(self.cs[-1])
+        x_recon = torch.sigmoid(self.cs[-1])
         # Only want to average across the mini-batch, hence, multiply by the image dimensions.
         Lx = criterion(x_recon, x) * self.A * self.B
 
@@ -162,12 +162,13 @@ class DRAWModel(nn.Module):
         return net_loss
 
     def generate(self, num_output):
+        self.batch_size = num_output
         h_dec_prev = torch.zeros(num_output, self.dec_size, device=self.device)
         dec_state = torch.zeros(num_output, self.dec_size  , device=self.device)
 
         for t in range(self.T):
-            c_prev = torch.zeros(num_output, self.B*self.A, device=self.device) if t == 0 else self.cs[t-1]
-            z = torch.randn(num_output, self.z_size, device=self.device)
+            c_prev = torch.zeros(self.batch_size, self.B*self.A, device=self.device) if t == 0 else self.cs[t-1]
+            z = torch.randn(self.batch_size, self.z_size, device=self.device)
             h_dec, dec_state = self.decoder(z, (h_dec_prev, dec_state))
             self.cs[t] = c_prev + self.write(h_dec)
             h_dec_prev = h_dec
@@ -176,6 +177,6 @@ class DRAWModel(nn.Module):
 
         for img in self.cs:
             img = img.view(-1, 1, self.B, self.A)
-            imgs.append(vutils.make_grid(F.sigmoid(img).detach().cpu(), nrow=int(np.sqrt(int(num_output))), padding=2, normalize=True))
+            imgs.append(vutils.make_grid(torch.sigmoid(img).detach().cpu(), nrow=int(np.sqrt(int(num_output))), padding=1, normalize=True, pad_value=1))
 
         return imgs
