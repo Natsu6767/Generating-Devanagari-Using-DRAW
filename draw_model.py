@@ -61,8 +61,23 @@ class DRAWModel(nn.Module):
             h_dec_prev = h_dec
 
     def read(self, x, x_hat, h_dec_prev):
-        # No attention
+        # Using attention
+        Fx, Fy, gamma = self.attn_window(h_dec)
+
+        def filter_img(img, Fx, Fy, gamma):
+            Fxt = Fx.transpose(2, 1)
+            img = img.vie(-1, self.B, self.A)
+            glimpse = Fy.bmm(img.bmm(Fxt))
+            glimpse = glimpse.view(-1, self.N*self.N)
+
+            return glimpse * gamma.view(-1, 1).expand_as(glimpse)
+
+        x = filter_img(x, Fx, Fy, gamma)
+        x_hat = filter_img(x_hat, Fx, Fy, gamma)
+
         return torch.cat((x, x_hat), dim=1)
+        # No attention
+        #return torch.cat((x, x_hat), dim=1)
 
     def write(self, h_dec):
         # No attention
