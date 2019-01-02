@@ -21,13 +21,14 @@ params = {
     'A' : 28,
     'B': 28,
     'z_size' :10,
-    'N' : 28,
+    'N' : 5,
     'dec_size': 256,
     'enc_size' :256,
-    'epoch_num': 20,
+    'epoch_num': 5,
     'learning_rate': 1e-3,
     'beta1': 0.5,
-    'clip': 5.0}
+    'clip': 5.0,
+    'save_epoch' : 2}
 
 # Use GPU is available else use CPU.
 device = torch.device("cuda:0" if(torch.cuda.is_available()) else "cpu")
@@ -45,28 +46,51 @@ train_loader = torch.utils.data.DataLoader(
 model = DRAWModel(params).to(device)
 optimizer = optim.Adam(model.parameters(), lr=params['learning_rate'], betas=(params['beta1'], 0.999))
 
+losses = []
+iters = 0
 avg_loss = 0
-count = 0
+print("Starting Training Loop...")
+print("-"*25)
 
 for epoch in range(params['epoch_num']):
-    for data, _ in train_loader:
+    for i, (data, _) in enumerate(train_loader, 0):
         bs = data.size(0)
         data = data.view(bs, -1).to(device)
         optimizer.zero_grad()
         loss = model.loss(data)
-        avg_loss += loss.cpu().data.numpy()
+        loss_val = loss.cpu().data.numpy()
+        avg_loss += loss_val
         loss.backward()
-        torch.nn.utils.clip_grad_norm(model.parameters(), params['clip'])
+        torch.nn.utils.clip_grad_norm_(model.parameters(), params['clip'])
         optimizer.step()
-        count += 1
+        iters += 1
         
-        if count % 100 == 0:
-            print("Epoch-{}; Count-{}; loss: {};".format(epoch, count, avg_loss / 100))
-
-            if count % 3000 == 0:
-                with torch.no_grad():
-                    generate_image(count)
-
+        if iters % 100 == 0:
+            print('[%d/%d][%d/%d]\tLoss: %.4f' % (epoch, params['epoch_num'], i, len(train_loader), avg_loss/100))
             avg_loss = 0
 
-generate_image(count)
+        losses.append(loss_val)
+
+    with torch.no_grad():
+        generate_image(epoch+1)
+
+    if epoch % params['save_epoch'] == 0:
+        torch.save({
+            'model' : model.state_dict(),
+            'optimizer' : optimizer.state_dict(),
+            'params' : params
+            }, 'checkpoint/model_epoch_{}'.format(epoch))
+
+torch.save({
+    'model' : model.state_dict(),
+    'optimizer' : optimizer.state_dict(),
+    'params' : params
+    }, 'checkpoint/model_final'.format(epoch))
+
+# Plot the training losses.
+plt.figure(figsize=(10,5))
+plt.title("Training Loss")
+plt.plot(losses)
+plt.xlabel("iterations")
+plt.ylabel("Loss")
+plt.savefig("Loss_Curve")
