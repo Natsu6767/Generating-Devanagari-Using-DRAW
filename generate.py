@@ -24,6 +24,7 @@ device = torch.device("cuda:0" if(torch.cuda.is_available()) else "cpu")
 params = state_dict['params']
 
 # Set the number of glimpses.
+# Best to just use the same value which was used for training.
 params['T'] = int(args.t) if(args.t) else params['T']
 
 # Load the model
@@ -38,7 +39,7 @@ print('*'*25)
 print("Generating Image...")
 # Generate images.
 with torch.no_grad():
-	x = model.generate(int(args.num_output))
+    x = model.generate(int(args.num_output))
 
 time_elapsed = time.time() - start_time
 print('\nDONE!')

@@ -6,11 +6,11 @@ import matplotlib.animation as animation
 import time
 import torchvision.utils as vutils
 
-
 from torchvision import datasets, transforms
 from draw_model import DRAWModel
 from dataloader import get_data
 
+# Function to generate new images and save the time-steps as an animation.
 def generate_image(epoch):
     x = model.generate(64)
     fig = plt.figure(figsize=(16, 16))
@@ -20,22 +20,23 @@ def generate_image(epoch):
     anim.save('draw_epoch_{}.gif'.format(epoch), dpi=100, writer='imagemagick')
     plt.close('all')
 
+# Dictionary storing network parameters.
 params = {
-    'T' : 25,
-    'batch_size': 128,
-    'A' : 32,
-    'B': 32,
-    'z_size' :100,
-    'read_N' : 6,
-    'write_N' : 6,
-    'dec_size': 400,
-    'enc_size' :400,
-    'epoch_num': 50,
-    'learning_rate': 1e-3,
+    'T' : 25,# Number of glimpses.
+    'batch_size': 128,# Batch size.
+    'A' : 32,# Image width
+    'B': 32,# Image height
+    'z_size' :100,# Dimension of latent space.
+    'read_N' : 6,# N x N dimension of reading glimpse.
+    'write_N' : 6,# N x N dimension of writing glimpse.
+    'dec_size': 400,# Hidden dimension for decoder.
+    'enc_size' :400,# Hidden dimension for encoder.
+    'epoch_num': 50,# Number of epochs to train for.
+    'learning_rate': 1e-3,# Learning rate.
     'beta1': 0.5,
     'clip': 5.0,
-    'save_epoch' : 10,
-    'channel' : None}
+    'save_epoch' : 10,# After how many epochs to save checkpoints and generate test output.
+    'channel' : None}# Number of channels for image.(3 for RGB, etc.)
 
 # Use GPU is available else use CPU.
 device = torch.device("cuda:0" if(torch.cuda.is_available()) else "cpu")
@@ -43,16 +44,18 @@ print(device, " will be used.\n")
 
 params['device'] = device
 
-
 train_loader = get_data(params)
+params['channel'] = 3
+
 """
 train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('data/', train='train', download=True,
                    transform=transforms.Compose([
                        transforms.ToTensor()])),
     batch_size=params['batch_size'], shuffle=True)
+
+params['channel'] = 1
 """
-params['channel'] = 3
 
 # Plot the training images.
 sample_batch = next(iter(train_loader))
@@ -63,12 +66,17 @@ plt.imshow(np.transpose(vutils.make_grid(
     sample_batch[0].to(device)[ : 64], nrow=8, padding=1, normalize=True, pad_value=1).cpu(), (1, 2, 0)))
 plt.savefig("Training_Data")
 
+# Initialize the model.
 model = DRAWModel(params).to(device)
+# Adam Optimizer
 optimizer = optim.Adam(model.parameters(), lr=params['learning_rate'], betas=(params['beta1'], 0.999))
 
+# List to hold the losses for each iteration.
+# Used for plotting loss curve.
 losses = []
 iters = 0
 avg_loss = 0
+
 print("-"*25)
 print("Starting Training Loop...\n")
 print('Epochs: %d\nBatch Size: %d\nLength of Data Loader: %d' % (params['epoch_num'], params['batch_size'], len(train_loader)))
@@ -78,15 +86,21 @@ start_time = time.time()
 
 for epoch in range(params['epoch_num']):
     epoch_start_time = time.time()
+    
     for i, (data, _ ) in enumerate(train_loader, 0):
+        # Get batch size.
         bs = data.size(0)
+        # Flatten the image.
         data = data.view(bs, -1).to(device)
         optimizer.zero_grad()
+        # Calculate the loss.
         loss = model.loss(data)
         loss_val = loss.cpu().data.numpy()
         avg_loss += loss_val
+        # Calculate the gradients.
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), params['clip'])
+        # Update parameters.
         optimizer.step()
 
         # Check progress of training.
@@ -117,12 +131,14 @@ training_time = time.time() - start_time
 print("-"*50)
 print('Training finished!\nTotal Time for Training: %.2fm' %(training_time / 60))
 print("-"*50)
+# Save the final trained network paramaters.
 torch.save({
     'model' : model.state_dict(),
     'optimizer' : optimizer.state_dict(),
     'params' : params
     }, 'checkpoint/model_final'.format(epoch))
 
+# Generate test output.
 with torch.no_grad():
     generate_image(params['epoch_num'])
 
