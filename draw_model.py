@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torchvision.utils as vutils
 import numpy as np
 
@@ -157,7 +156,7 @@ class DRAWModel(nn.Module):
         criterion = nn.BCELoss()
         x_recon = torch.sigmoid(self.cs[-1])
         # Only want to average across the mini-batch, hence, multiply by the image dimensions.
-        Lx = criterion(x_recon, x) * self.A * self.B * 3
+        Lx = criterion(x_recon, x) * self.A * self.B * self.channel
 
         Lz = 0
 
