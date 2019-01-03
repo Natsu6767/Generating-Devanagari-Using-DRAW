@@ -22,8 +22,8 @@ The checkpoint file for the model trained for 50 epochs is present in **checkpoi
 ## Results
 <table align='center'>
 <tr align='center'>
-<th> Devanagari Training Data </td>
-<th> Generated Devanagari After 50 Epochs</td>
+<th> Devanagari Training Data </th>
+<th> Generated Devanagari After 50 Epochs</th>
 </tr>
 <tr>
 <td><img src = 'images/Devanagari_Training_Data.png'>
@@ -32,8 +32,8 @@ The checkpoint file for the model trained for 50 epochs is present in **checkpoi
 </table>
 <table align='center'>
 <tr align='center'>
-<th> Devanagari Only Numbers Training Data </td>
-<th> Generated Devanagari Numbers After 50 Epochs</td>
+<th> Devanagari Only Numbers Training Data </th>
+<th> Generated Devanagari Numbers After 50 Epochs</th>
 </tr>
 <tr>
 <td><img src = 'images/devanagari_num_Training_Data.png'>
@@ -41,8 +41,12 @@ The checkpoint file for the model trained for 50 epochs is present in **checkpoi
 </tr>
 </table>
 
+### Some more generated images:
+<img src = 'images/Generated_Image144_1.png'>
+
 ## References
-1. **Karol Gregor, Ivo Danihelka, Alex Graves, Danilo Jimenez Rezende, Daan Wierstra** *Conditional Generative Adversarial Nets.* [[arxiv](https://arxiv.org/abs/1502.04623)]
+1. **Karol Gregor, Ivo Danihelka, Alex Graves, Danilo Jimenez Rezende, Daan Wierstra** *
+DRAW: A Recurrent Neural Network For Image Generation.* [[arxiv](https://arxiv.org/abs/1502.04623)]
 2. **ericjang/draw** [[repo](https://github.com/ericjang/draw)]
 3. **What is DRAW (Deep Recurrent Attentive Writer)?** [[blog](http://kvfrans.com/what-is-draw-deep-recurrent-attentive-writer/)]
 
