@@ -87,7 +87,10 @@ class DRAWModel(nn.Module):
     def write(self, h_dec):
         # Using attention
         w = self.fc_write(h_dec)
-        w = w.view(self.batch_size, 3, self.write_N, self.write_N)
+        if self.channel == 3:
+            w = w.view(self.batch_size, 3, self.write_N, self.write_N)
+        elif self.channel == 1:
+            w = w.view(self.batch_size, self.write_N, self.write_N)
 
         (Fx, Fy), gamma = self.attn_window(h_dec, self.write_N)
         Fyt = Fy.transpose(self.channel, 2)
@@ -179,7 +182,7 @@ class DRAWModel(nn.Module):
         dec_state = torch.zeros(num_output, self.dec_size  , device=self.device)
 
         for t in range(self.T):
-            c_prev = torch.zeros(self.batch_size, self.B*self.A*3, device=self.device) if t == 0 else self.cs[t-1]
+            c_prev = torch.zeros(self.batch_size, self.B*self.A*self.channel, device=self.device) if t == 0 else self.cs[t-1]
             z = torch.randn(self.batch_size, self.z_size, device=self.device)
             h_dec, dec_state = self.decoder(z, (h_dec_prev, dec_state))
             self.cs[t] = c_prev + self.write(h_dec)
@@ -188,7 +191,7 @@ class DRAWModel(nn.Module):
         imgs = []
 
         for img in self.cs:
-            img = img.view(-1, 3, self.B, self.A)
+            img = img.view(-1, self.channel, self.B, self.A)
             imgs.append(vutils.make_grid(torch.sigmoid(img).detach().cpu(), nrow=int(np.sqrt(int(num_output))), padding=1, normalize=True, pad_value=1))
 
         return imgs

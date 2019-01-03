@@ -16,25 +16,25 @@ def generate_image(count):
     fig = plt.figure(figsize=(12, 12))
     plt.axis("off")
     ims = [[plt.imshow(np.transpose(i,(1,2,0)), animated=True)] for i in x]
-    anim = animation.ArtistAnimation(fig, ims, interval=200, repeat_delay=1000, blit=True)
+    anim = animation.ArtistAnimation(fig, ims, interval=500, repeat_delay=1000, blit=True)
     anim.save('draw_{}.gif'.format(count), dpi=100, writer='imagemagick')
     plt.close('all')
 
 params = {
-    'T' : 64,
+    'T' : 20,
     'batch_size': 64,
     'A' : 32,
     'B': 32,
-    'z_size' :100,
-    'read_N' : 2,
-    'write_N' : 5,
-    'dec_size': 256,
-    'enc_size' :256,
-    'epoch_num': 10,
-    'learning_rate': 2e-4,
+    'z_size' :30,
+    'read_N' : 6,
+    'write_N' : 6,
+    'dec_size': 400,
+    'enc_size' :400,
+    'epoch_num': 50,
+    'learning_rate': 1e-3,
     'beta1': 0.5,
     'clip': 5.0,
-    'save_epoch' : 5,
+    'save_epoch' : 10,
     'channel' : None}
 
 # Use GPU is available else use CPU.
@@ -47,20 +47,20 @@ params['device'] = device
 train_loader = get_data(params)
 """
 train_loader = torch.utils.data.DataLoader(
-    datasets.SVHN('data/', split='train', download=True,
+    datasets.MNIST('data/', train='train', download=True,
                    transform=transforms.Compose([
                        transforms.ToTensor()])),
     batch_size=params['batch_size'], shuffle=True)
 """
-params['channel'] = 1
+params['channel'] = 3
 
 # Plot the training images.
 sample_batch = next(iter(train_loader))
-plt.figure(figsize=(6, 6))
+plt.figure(figsize=(12, 12))
 plt.axis("off")
 plt.title("Training Images")
 plt.imshow(np.transpose(vutils.make_grid(
-    sample_batch[0].to(device)[ : 36], nrow=6, padding=2, normalize=True).cpu(), (1, 2, 0)))
+    sample_batch[0].to(device)[ : 36], nrow=6, padding=1, normalize=True, pad_value=1).cpu(), (1, 2, 0)))
 plt.savefig("Training_Data")
 
 model = DRAWModel(params).to(device)
@@ -91,7 +91,7 @@ for epoch in range(params['epoch_num']):
         # Check progress of training.
         if i != 0 and i%100 == 0:
             print('[%d/%d][%d/%d]\tLoss: %.4f'
-                  % (epoch, params['epoch_num'], i, len(train_loader), avg_loss / 100))
+                  % (epoch+1, params['epoch_num'], i, len(train_loader), avg_loss / 100))
 
             avg_loss = 0
         
@@ -100,17 +100,17 @@ for epoch in range(params['epoch_num']):
 
     avg_loss = 0
     epoch_time = time.time() - epoch_start_time
-    print("Time Taken for Epoch %d: %.2fm" %(epoch, epoch_time / 60))
+    print("Time Taken for Epoch %d: %.2fs" %(epoch + 1, epoch_time))
     # Save checkpoint and generate test output.
-    if epoch % params['save_epoch'] == 0:
+    if (epoch+1) % params['save_epoch'] == 0:
         torch.save({
             'model' : model.state_dict(),
             'optimizer' : optimizer.state_dict(),
             'params' : params
-            }, 'checkpoint/model_epoch_{}'.format(epoch))
+            }, 'checkpoint/model_epoch_{}'.format(epoch+1))
         
         with torch.no_grad():
-            generate_image(epoch)
+            generate_image(epoch+1)
 
 training_time = time.time() - start_time
 print("-"*50)
