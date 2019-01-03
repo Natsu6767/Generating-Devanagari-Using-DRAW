@@ -11,21 +11,21 @@ from torchvision import datasets, transforms
 from draw_model import DRAWModel
 from dataloader import get_data
 
-def generate_image(count):
-    x = model.generate(36)
-    fig = plt.figure(figsize=(12, 12))
+def generate_image(epoch):
+    x = model.generate(64)
+    fig = plt.figure(figsize=(16, 16))
     plt.axis("off")
     ims = [[plt.imshow(np.transpose(i,(1,2,0)), animated=True)] for i in x]
     anim = animation.ArtistAnimation(fig, ims, interval=500, repeat_delay=1000, blit=True)
-    anim.save('draw_{}.gif'.format(count), dpi=100, writer='imagemagick')
+    anim.save('draw_epoch_{}.gif'.format(epoch), dpi=100, writer='imagemagick')
     plt.close('all')
 
 params = {
-    'T' : 20,
-    'batch_size': 64,
+    'T' : 25,
+    'batch_size': 128,
     'A' : 32,
     'B': 32,
-    'z_size' :30,
+    'z_size' :100,
     'read_N' : 6,
     'write_N' : 6,
     'dec_size': 400,
@@ -56,11 +56,11 @@ params['channel'] = 3
 
 # Plot the training images.
 sample_batch = next(iter(train_loader))
-plt.figure(figsize=(12, 12))
+plt.figure(figsize=(16, 16))
 plt.axis("off")
 plt.title("Training Images")
 plt.imshow(np.transpose(vutils.make_grid(
-    sample_batch[0].to(device)[ : 36], nrow=6, padding=1, normalize=True, pad_value=1).cpu(), (1, 2, 0)))
+    sample_batch[0].to(device)[ : 64], nrow=8, padding=1, normalize=True, pad_value=1).cpu(), (1, 2, 0)))
 plt.savefig("Training_Data")
 
 model = DRAWModel(params).to(device)
@@ -70,7 +70,8 @@ losses = []
 iters = 0
 avg_loss = 0
 print("-"*25)
-print("Starting Training Loop...")
+print("Starting Training Loop...\n")
+print('Epochs: %d\nBatch Size: %d\nLength of Data Loader: %d' % (params['epoch_num'], params['batch_size'], len(train_loader)))
 print("-"*25)
 
 start_time = time.time()
