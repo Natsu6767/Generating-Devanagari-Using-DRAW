@@ -32,7 +32,7 @@ The checkpoint file for the model trained for 50 epochs is present in **checkpoi
 </table>
 <table align='center'>
 <tr align='center'>
-<th> Devanagari Only Numbers Training Data </th>
+<th> Devanagari Numbers Only Training Data </th>
 <th> Generated Devanagari Numbers After 50 Epochs</th>
 </tr>
 <tr>
