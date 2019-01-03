@@ -45,7 +45,7 @@ The checkpoint file for the model trained for 50 epochs is present in **checkpoi
 <img src = 'images/Generated_Image144_1.png'>
 
 ## References
-1. **Karol Gregor, Ivo Danihelka, Alex Graves, Danilo Jimenez Rezende, Daan Wierstra** *DRAW: A Recurrent Neural Network For Image Generation.* [[arxiv](https://arxiv.org/abs/1502.04623)]
+1. **Karol Gregor, Ivo Danihelka, Alex Graves, Danilo Jimenez Rezende, Daan Wierstra.** *DRAW: A Recurrent Neural Network For Image Generation.* [[arxiv](https://arxiv.org/abs/1502.04623)]
 2. **ericjang/draw** [[repo](https://github.com/ericjang/draw)]
 3. **What is DRAW (Deep Recurrent Attentive Writer)?** [[blog](http://kvfrans.com/what-is-draw-deep-recurrent-attentive-writer/)]
 
